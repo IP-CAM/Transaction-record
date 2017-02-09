@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<modification>
+    <id>sell_recoder</id>
+    <version>1.0</version>
+    <vqmver required="true">2.5.0</vqmver>
+    <author>maojiaqi</author>
+
+    <file path="catalog/model/catalog/product.php">
+        <operation >
+            <search position="before" ><![CDATA[
+public function getProfile(
+]]></search>
+            <add><![CDATA[
+public function getOrderProductIdTotal($product_id){
+        $query = $this->db->query("SELECT COUNT(*) AS total FROM " . DB_PREFIX . "order_product op LEFT JOIN ". DB_PREFIX . "order_option oo ON (op.order_product_id = oo.order_product_id) LEFT JOIN " . DB_PREFIX ."order o ON (o.order_id = oo.order_id)  WHERE  product_id = '" . (int)$product_id . "' AND o.order_status_id = 5");
+        return $query->row['total'];
+    }
+    public function getOrderProductId($product_id,$start = 0, $limit = 20){
+        if ($start < 0) {
+            $start = 0;
+        }
+
+        if ($limit < 1) {
+            $limit = 20;
+        }
+        $query = $this->db->query("SELECT * FROM " . DB_PREFIX . "order_product op LEFT JOIN ". DB_PREFIX . "order_option oo ON (op.order_product_id = oo.order_product_id) LEFT JOIN " . DB_PREFIX ."order o ON (o.order_id = oo.order_id)  WHERE  product_id = '" . (int)$product_id . "' AND o.order_status_id = 5 ORDER BY o.date_modified DESC LIMIT " . (int)$start . "," . (int)$limit);
+
+        return $query->rows;
+
+    }
+]]></add>
+        </operation>
+    </file>
+
+    <file path="catalog/view/theme/journal2/template/product/product.tpl">
+        <operation >
+            <search position="before" index="1"><![CDATA[
+<?php $index = 0; foreach ($this->journal2->settings->get('additional_product_tabs', array()) as $tab): $index++; ?>
+]]></search>
+            <add><![CDATA[
+<li <?php if ($is_active) { echo 'class="active"'; $is_active = false; } ;?>><a href="#tab-recode" data-toggle="tab">交易记录(<?php echo $resultsorders_total1; ?>)</a></li>
+]]></add>
+        </operation>
+
+        <operation >
+            <search position="before"><![CDATA[
+  <!--endQ&A-->
+]]></search>
+            <add><![CDATA[
+ <div class="tab-pane tab-content <?php if ($is_active) { echo 'active'; $is_active = false; } ;?>" id="tab-recode">
+     <form class="form-horizontal" id="form-comment">
+       <div id="recode"></div>
+     </form>
+   </div>
+   <script>
+       $('#recode').delegate('.pagination a', 'click', function(e) {
+           e.preventDefault();
+           $('#recode').fadeOut('slow');
+           $('#recode').load(this.href);
+           $('#recode').fadeIn('slow');
+       });
+       $('#recode').load('index.php?route=product/sell_recoder&product_id=<?php echo $product_id; ?>');
+   </script>
+]]></add>
+        </operation>
+    </file>
+
+    <file path="catalog/controller/product/product.php">
+        <operation >
+            <search position="after"><![CDATA[
+$this->model_catalog_product->updateViewed($this->request->get['product_id']);
+]]></search>
+            <add><![CDATA[
+ $resultsorders_total1 = $this->model_catalog_product->getOrderProductIdTotal($this->request->get['product_id']);
+            //var_dump($resultsorders_total);
+            $data['resultsorders_total1'] = $resultsorders_total1;
+]]></add>
+        </operation>
+
+    </file>
+
+</modification>
